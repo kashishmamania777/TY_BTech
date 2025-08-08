@@ -1,0 +1,87 @@
+def calculate_checksum(data, chunk_size):
+    """Calculate the checksum of the data by splitting it into chunks and summing."""
+    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+    # Convert chunks to integers and sum them up
+    total_sum = 0
+    for chunk in chunks:
+        total_sum += int(chunk, 16)  # Convert hexadecimal string to integer
+
+        # Handle overflow by adding the carry
+        if total_sum >= (1 << (chunk_size * 4)):  # If total_sum exceeds chunk size
+            total_sum = (total_sum & ((1 << (chunk_size * 4)) - 1)) + 1  # Wrap around the overflow
+
+    # Calculate the checksum by taking the one's complement
+    checksum = ~total_sum & ((1 << (chunk_size * 4)) - 1)
+    return format(checksum, 'x').zfill(chunk_size)  # Return checksum as hexadecimal string
+
+
+def verify_checksum(data, received_checksum, chunk_size):
+    """Verify if the computed checksum matches the received checksum."""
+    computed_checksum = calculate_checksum(data, chunk_size)
+    return computed_checksum == received_checksum.lower()
+
+
+def convert_to_hex(word):
+    """Convert each character in a word to its hexadecimal ASCII representation."""
+    hexcode = []
+    if len(word) % 2 == 0:
+        for i in range(int(len(word) / 2)):
+            hexcode.append(hex(ord(word[2 * i]))[2:] + hex(ord(word[2 * i + 1]))[2:])
+    else:
+        hexcode.append("00" + hex(ord(word[0]))[2:])
+        for i in range(1, int(len(word) / 2) + 1):
+            hexcode.append(hex(ord(word[2 * i - 1]))[2:] + hex(ord(word[2 * i]))[2:])
+    
+    return hexcode
+
+
+def calculate_sender_checksum(hexcode):
+    """Calculate the checksum for the sender."""
+    total_sum = "0000"
+    for code in hexcode:
+        temp = int(total_sum, 16) + int(code, 16)
+        total_sum = hex(temp)
+    
+    total_sum = total_sum[2:]
+    if len(total_sum) > 4:
+        n = len(total_sum) - 4
+        sum1 = total_sum[0:n]
+        sum2 = total_sum[n:]
+        temp = int(sum1, 16) + int(sum2, 16)
+        total_sum = hex(temp)
+    
+    comp = int("FFFF", 16) - int(total_sum, 16)
+    return hex(comp)[2:]
+
+
+def main():
+    print("SENDER SIDE")
+    input_word = input("Enter the word to send: ")
+
+    # Convert to hexadecimal
+    hexcode = convert_to_hex(input_word)
+    print(f"Hex strings for the input: {hexcode}")
+
+    # Calculate checksum at sender side
+    sender_checksum = calculate_sender_checksum(hexcode)
+    print(f"Checksum at Sender: {sender_checksum}")
+
+    # Simulate transmission
+    received_word = input("Enter the word received: ")
+    hexcode_received = convert_to_hex(received_word)
+    print(f"Hex strings for the received input: {hexcode_received}")
+
+    # Calculate checksum at receiver side
+    receiver_checksum = calculate_sender_checksum(hexcode_received)
+    print(f"Checksum at Receiver: {receiver_checksum}")
+
+    # Verify checksum
+    if sender_checksum.lower() == receiver_checksum.lower():
+        print("Data received: valid")
+    else:
+        print("Data received: invalid")
+
+
+if __name__ == "__main__":
+    main()
